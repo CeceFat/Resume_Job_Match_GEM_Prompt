@@ -4,6 +4,9 @@
 
 **一套結構化的 LLM 提示詞，用於 evidence-based 的履歷篩選，靈感來自專利請求項分析方法論。**
 
+> **Current version: v2.0** (2026-04-08) — Decision Tree replaces numerical scoring; JD Construction step added.
+> See [Changelog](#changelog--版本歷程) for details.
+
 ---
 
 ## What is this? | 這是什麼？
@@ -12,9 +15,9 @@ This is a system prompt (designed for Google AI Studio GEMs, but compatible with
 
 這是一個系統提示詞（設計用於 Google AI Studio GEMs，但相容於任何支援 system instruction 的 LLM），可將 AI 轉化為嚴謹的**履歷–職缺比對分析師**。
 
-Instead of vague keyword matching, it applies a **claim construction methodology** — originally developed for Standard Essential Patent (SEP) essentiality analysis — to decompose job requirements element-by-element and map them against resume evidence with strict evidentiary standards.
+Instead of vague keyword matching, it applies a **claim construction methodology** — originally developed for Standard Essential Patent (SEP) essentiality analysis — to decompose job requirements element-by-element and map them against resume evidence with strict evidentiary standards. In v2.0, the final verdict is determined by a **Decision Tree** (categorical judgment) rather than a numerical scoring formula, following the same methodology upgrade applied to the SEP analysis framework.
 
-它不採用模糊的關鍵字比對，而是應用**請求項解構方法論** —— 原始開發於標準必要專利（SEP）essentiality 分析 —— 將職缺需求逐項拆解，並以嚴格的佐證標準比對履歷內容。
+它不採用模糊的關鍵字比對，而是應用**請求項解構方法論** —— 原始開發於標準必要專利（SEP）essentiality 分析 —— 將職缺需求逐項拆解，並以嚴格的佐證標準比對履歷內容。v2.0 起，最終判定改由 **Decision Tree**（分類判斷）產出，而非數值評分公式。
 
 ---
 
@@ -31,9 +34,11 @@ I realized the **structural isomorphism** between these two tasks:
 | SEP Essentiality Check | Resume–JD Matching |
 |---|---|
 | Patent claim → element decomposition | Job description → requirement decomposition |
+| **Claim Construction** (Phillips standard) | **JD Construction** (hiring manager perspective) |
 | Standard text → normative evidence | Resume → experience evidence |
-| MAPPED / PARTIAL / NOT_FOUND | STRONG MATCH / PARTIAL MATCH / GAP |
-| Essentiality score | Match score |
+| MAPPED / PARTIAL / NOT_FOUND | STRONG MATCH / PARTIAL MATCH / INFERRED / GAP |
+| Mandatory / Optional | MUST-HAVE / NICE-TO-HAVE / IMPLICIT |
+| **Decision Tree** → ESSENTIAL / NOT ESSENTIAL | **Decision Tree** → STRONG FIT / QUALIFIED FIT / STRETCH FIT / WEAK FIT |
 | Thesis–Antithesis–Synthesis | Thesis–Antithesis–Synthesis |
 | Cui Bono? (licensing strategy) | Cui Bono? (hiring strategy) |
 
@@ -45,32 +50,47 @@ So I ported the methodology. This is the result.
 
 ## Key Features | 核心特色
 
-### 1. Element-by-Element Decomposition | 逐項拆解
-JD requirements are decomposed into discrete, categorized elements (Hard Skill, Soft Skill, Domain Knowledge, Credential, Experience, Logistics), each assigned a weight (MUST-HAVE / NICE-TO-HAVE / IMPLICIT).
+### 1. JD Construction | 職缺需求建構 *(v2.0)*
+Before any matching begins, each JD requirement undergoes formal semantic construction — analogous to *Claim Construction* in patent analysis. Surface keywords are interpreted in context: the same word ("data pipeline") means different things at a startup vs. an enterprise. Explicit requirements are separated from implicit ones. JD "wish lists" are distinguished from hard thresholds.
 
-JD 需求被拆解為離散的、分類過的元素（硬技能、軟技能、領域知識、證照、經歷、後勤條件），每項賦予權重（必備 / 加分 / 隱性）。
+比對開始前，每項 JD 需求都要經過正式的語義建構 —— 類比於專利分析中的 *Claim Construction*。表面關鍵字需在語境下解讀：同一個詞（「數據管線」）在新創與大型企業意涵不同。明示需求與隱性需求分離。JD 的「理想清單」與硬門檻需區分。
 
-### 2. Strict Evidence Standards | 嚴格佐證標準
+### 2. Obligation Level Classification | 義務等級標定 *(v2.0)*
+Every requirement is classified as **MUST-HAVE** (hard threshold — directly drives Decision Tree Step 1), **NICE-TO-HAVE** (soft preference — affects STRONG FIT vs. QUALIFIED FIT in Step 2), or **IMPLICIT** (industry common knowledge not stated in JD). This mirrors the mandatory/optional distinction in technical standards analysis.
+
+每項需求分類為 **MUST-HAVE**（硬門檻 — 直接驅動 Decision Tree Step 1）、**NICE-TO-HAVE**（軟性期待 — 影響 Step 2 的 STRONG FIT vs. QUALIFIED FIT）或 **IMPLICIT**（JD 未明示的產業常識）。這對應技術標準分析中的 mandatory/optional 區分。
+
+### 3. Element-by-Element Decomposition | 逐項拆解
+JD requirements are decomposed into discrete, categorized elements (Hard Skill, Soft Skill, Domain Knowledge, Credential, Experience, Logistics).
+
+JD 需求被拆解為離散的、分類過的元素（硬技能、軟技能、領域知識、證照、經歷、後勤條件）。
+
+### 4. Strict Evidence Standards | 嚴格佐證標準
 Four-tier matching: **STRONG MATCH** (concrete evidence + quantified outcomes) → **PARTIAL MATCH** (related but incomplete) → **INFERRED** (reasonable inference, needs verification) → **GAP** (not found). No "vibes-based" assessment.
 
 四級匹配制：**STRONG MATCH**（具體證據 + 量化成果）→ **PARTIAL MATCH**（相關但不完整）→ **INFERRED**（合理推論，需驗證）→ **GAP**（未找到）。不做「感覺式」評估。
 
-### 3. Four Corners Rule | 四角原則
+### 5. Decision Tree Verdict | 決策樹判定 *(v2.0 — replaces numerical scoring)*
+The final fit verdict is determined by a 4-step Decision Tree — not a percentage formula. Step 1 checks for MUST-HAVE GAPs; Step 2 evaluates coverage quality; Step 3 accumulates risk flags; Step 4 issues the final verdict. **LLM categorical judgment is empirically more reliable than numerical scoring** (validated across 9 benchmark cases in the parent SEP framework).
+
+最終適配判定由 4-step Decision Tree 產出，而非百分比公式。Step 1 檢查 MUST-HAVE GAP；Step 2 評估覆蓋品質；Step 3 累積 risk flags；Step 4 最終判定。**LLM 分類判斷的可靠度實證高於數值評分**（在母體 SEP 框架的 9 個 benchmark cases 驗證）。
+
+### 6. Four Corners Rule | 四角原則
 Analysis is grounded in the actual text of the resume and JD — not assumptions, brand halo, or gut feeling. Domain knowledge serves as reference, never as substitute for evidence.
 
 分析基於履歷與 JD 的實際文字 —— 而非假設、品牌光環或直覺。領域知識僅作參考，絕不替代證據。
 
-### 4. Dialectical Analysis | 辯證分析
+### 7. Dialectical Analysis | 辯證分析
 Every conclusion undergoes Thesis (direct analysis) → Antithesis (candidate's defense, hiring manager's concerns, market dynamics) → Synthesis (pragmatic verdict + confidence interval + known unknowns).
 
 每個結論都經過正題（直接分析）→ 反題（候選人辯護、用人主管顧慮、市場供需）→ 合題（務實結論 + 信心區間 + 已知未知）。
 
-### 5. Transferable Skills Analysis | 可遷移能力分析
+### 8. Transferable Skills Analysis | 可遷移能力分析
 Distinguishes between direct transfer, proximate transfer (same category, short learning curve), conceptual transfer (same underlying logic), and weak transfer — preventing both over-crediting and under-crediting cross-domain experience.
 
 區分直接遷移、近似遷移（同類技能，短學習曲線）、概念遷移（底層邏輯相同）與弱遷移 —— 避免對跨域經歷過度或不足地評價。
 
-### 6. Anti-Bias Compliance Reminders | 反歧視合規提醒
+### 9. Anti-Bias Compliance Reminders | 反歧視合規提醒
 Built-in detection for discriminatory JD clauses and explicit prohibition against age, gender, race, or other protected-class-based assessments.
 
 內建歧視性 JD 條款偵測，明確禁止基於年齡、性別、種族等受保護類別的評估。
@@ -98,11 +118,22 @@ The prompt produces a structured report containing:
 
 提示詞產出結構化報告，包含：
 
-1. **Executive Summary** — Bottom-line verdict (STRONG FIT / GOOD FIT / PARTIAL FIT / WEAK FIT) with confidence level
-2. **Matching Chart** — Element-by-element mapping table with evidence citations
+1. **Executive Summary** — Bottom-line verdict (**STRONG FIT / QUALIFIED FIT / STRETCH FIT / WEAK FIT**) with Element Summary, Decision Tree Path, Risk Flags, and confidence level
+2. **Matching Chart** — Element-by-element mapping table with JD Construction and evidence citations
 3. **Gap Analysis** — Critical gaps, manageable gaps, and hidden strengths
 4. **Dialectical Analysis** — Thesis / Antithesis / Synthesis
 5. **Strategic Recommendation** — Cui Bono analysis, interview verification checklist, JD revision suggestions, or career advice (depending on use case)
+
+---
+
+## Verdict Definitions | 判定定義
+
+| Verdict | Definition | Action |
+|---------|------------|--------|
+| **STRONG FIT** | All MUST-HAVEs = STRONG MATCH; good NICE-TO-HAVE coverage; no significant risk flags | Recommend direct interview |
+| **QUALIFIED FIT** | All MUST-HAVEs met (may include PARTIAL); some NICE-TO-HAVE gaps | Interview recommended; design verification questions for PARTIAL items |
+| **STRETCH FIT** | 1 MUST-HAVE GAP with transferable basis, or core technical stack is PARTIAL | Talent pool / internal transfer candidate; requires onboarding investment |
+| **WEAK FIT** | Hard-threshold MUST-HAVE GAP (license/credential), or 2+ MUST-HAVE GAPs | Not recommended for interview |
 
 ---
 
@@ -115,12 +146,12 @@ The prompt produces a structured report containing:
 - LLM outputs are probabilistic and may contain errors. All matching results should be verified by qualified HR professionals or hiring managers.
 - The compliance reminders (anti-discrimination, labor law) are informational prompts, **not legal opinions**. Consult qualified legal counsel for compliance questions.
 - **Privacy notice**: Inputting resumes into any LLM involves processing personal data. Users are responsible for complying with applicable data protection regulations (GDPR, Taiwan PDPA, etc.) and reviewing the data usage policies of their chosen LLM platform.
-- The scoring formula is a heuristic framework, not a validated psychometric instrument.
+- The Decision Tree is a heuristic framework, not a validated psychometric instrument.
 
 - LLM 輸出為機率性結果，可能包含錯誤。所有匹配結果應由合格的人資專業人員或用人主管驗證。
 - 合規提醒（反歧視、勞動法規）為資訊性提示，**非法律意見**。合規問題請諮詢合格法律顧問。
 - **隱私注意事項**：將履歷輸入任何 LLM 涉及個人資料處理。使用者有責任遵守適用的資料保護法規（GDPR、臺灣個資法等），並審閱所選 LLM 平台的資料使用政策。
-- 評分公式為啟發式框架，並非經過驗證的心理測量工具。
+- Decision Tree 為啟發式框架，並非經過驗證的心理測量工具。
 
 ---
 
@@ -130,14 +161,35 @@ For those interested in the original patent analysis methodology that inspired t
 
 對原始專利分析方法論有興趣者：
 
-| Concept | In SEP Analysis | In Resume Matching |
+| Concept | In SEP Analysis | In Resume Matching (v2.0) |
 |---|---|---|
 | **Decomposition unit** | Claim element | JD requirement |
+| **Construction step** | Claim Construction (Phillips standard) | JD Construction (hiring manager perspective) |
 | **Evidence source** | Technical standard text | Resume content |
-| **Construction standard** | Phillips v. AWH Corp. (2005) | POSITA → Hiring manager perspective |
+| **Obligation level** | Mandatory / Optional | MUST-HAVE / NICE-TO-HAVE / IMPLICIT |
 | **Mapping strictness** | MAPPED requires specific section + page + quote | STRONG MATCH requires specific experience + timeline + outcome |
+| **Verdict mechanism** | Decision Tree → ESSENTIAL / NOT ESSENTIAL | Decision Tree → STRONG / QUALIFIED / STRETCH / WEAK FIT |
 | **Cross-layer problem** | Standard defines mechanism ≠ standard mandates specific usage | Resume shows exposure ≠ resume proves ownership |
-| **Scoring threshold** | 100% MAPPED = ESSENTIAL | ≥85% weighted = STRONG FIT |
+
+---
+
+## Changelog | 版本歷程
+
+### v2.0 (2026-04-08)
+**Methodology upgrade — Decision Tree replaces numerical scoring.**
+
+- **§3.3 JD Construction** *(new)*: Formal semantic construction of JD requirements before matching — analogous to Claim Construction in patent analysis. Prevents surface keyword over-reliance.
+- **§3.3a Obligation Level** *(new)*: MUST-HAVE / NICE-TO-HAVE / IMPLICIT classification drives Decision Tree path.
+- **§3.12 Decision Tree** *(rewrite)*: 4-step categorical judgment replaces `Weighted Score` formula. Step 1: MUST-HAVE GAP gate → Step 2: coverage quality → Step 3: Risk Flags → Step 4: final verdict.
+- **§3.13 Verdicts** *(renamed)*: STRONG FIT / **QUALIFIED FIT** / **STRETCH FIT** / WEAK FIT (replaces GOOD FIT / PARTIAL FIT threshold bands).
+- **§5.1 Executive Summary** *(updated)*: Now includes Element Summary + Decision Tree Path + Risk Flags.
+- **§8 QC Checklist** *(expanded)*: +5 v2.0 items (JD Construction check, Decision Tree trace check, no-percentage enforcement).
+- **§9 Worked Example** *(updated)*: Same case re-analyzed with Decision Tree — verdict changes from GOOD FIT (80%) → STRETCH FIT [TRANSFER RISK].
+
+**Background**: The numerical scoring approach was deprecated after validation in the parent SEP Essentiality Check framework (SEPv3 v2.2, 2026), where empirical testing across benchmark cases showed LLM categorical judgment to be significantly more reliable than numerical threshold-based scoring.
+
+### v1.0 (2026-02-26)
+Initial release. Element-by-element JD decomposition, 4-tier matching (STRONG MATCH / PARTIAL MATCH / INFERRED / GAP), weighted numerical scoring (MUST-HAVE × 3, NICE-TO-HAVE × 1), dialectical analysis framework.
 
 ---
 
@@ -156,7 +208,7 @@ This prompt was created by a patent engineer, not an HR professional. Contributi
 此提示詞由專利工程師撰寫，而非人資專業人士。特別歡迎人資從業者、招募人員、組織心理學家與勞動法專家的貢獻。改進方向包括：
 
 - Industry-specific domain knowledge modules (§6) for non-tech sectors
-- Validated competency frameworks to replace or supplement the heuristic scoring
+- Validated competency frameworks to replace or supplement the heuristic Decision Tree
 - Localization for other markets (US, EU, Japan, Southeast Asia)
 - Integration with ATS (Applicant Tracking System) workflows
 - Bias detection improvements
